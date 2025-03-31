@@ -2,6 +2,7 @@
 
 
 ## Web Worker - Fibonacci example
+<img width="1416" alt="Screenshot 2025-03-31 at 1 07 13 PM" src="https://github.com/user-attachments/assets/ea2d8bab-7c74-4b50-af74-7aa67ccf834c" />
 
 ## Resources
 
