@@ -41,18 +41,74 @@ function App() {
     "video/quicktime",
   ];
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (files.length === 0) {
       setFileError("Please select at least one file");
       return;
     }
 
-    // TODO: handle the actual file upload
-    console.log(
-      "Uploading files:",
-      files.map((f) => f.name)
-    );
+    // Track upload progress or errors
+    const uploadResults: {
+      file: string;
+      presignedUrl?: string;
+      status: string;
+      message?:string
+    }[] = [];
+
+    try {
+      // Process files in parallel
+      await Promise.all(
+        files.map(async (_file) => {
+          try {
+            // Create proper JSON body
+            const requestBody = JSON.stringify({
+              filename: _file.name,
+              filetype: _file.type,
+            });
+
+            const response = await fetch(
+              "http://localhost:8080/get-upload-url",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: requestBody,
+              }
+            );
+
+            if (!response.ok) {
+              throw new Error(
+                `Upload failed for ${_file.name}: ${response.statusText}`
+              );
+            }
+
+            const presignedUrl = await response.json();
+
+            uploadResults.push({
+              file: _file.name,
+              presignedUrl,
+              status: "success",
+            });
+          } catch (error:unknown) {
+            console.error(`Error uploading ${_file.name}:`, error);
+            uploadResults.push({
+              file: _file.name,
+              status: "error",
+              message: "Failed to get presigned url",
+            });
+          }
+        })
+      );
+
+      console.log("Upload results:", uploadResults);
+
+      // Here you could add state management for showing upload results to the user
+    } catch (error) {
+      console.error("Upload process failed:", error);
+      setFileError("Upload process failed. Please try again.");
+    }
   };
 
   const validateAndAddFiles = (selectedFiles: File[]) => {
@@ -141,7 +197,7 @@ function App() {
   };
 
   const openPreviewModal = (fileInfo: FileInfo) => {
-    setSelectedPreview({...fileInfo}); // Clone the fileInfo object to ensure we have the latest data
+    setSelectedPreview({ ...fileInfo }); // Clone the fileInfo object to ensure we have the latest data
   };
 
   const closePreviewModal = () => {
@@ -496,23 +552,23 @@ export default App;
 //     e.stopPropagation(); // Prevent opening the preview when removing
 //     setFiles((prev) => {
 //       const fileToRemove = prev.find((f) => f.id === id);
-      
+
 //       // If the file being removed is currently being previewed, close the preview
 //       if (selectedPreview && selectedPreview.id === id) {
 //         setSelectedPreview(null);
 //       }
-      
+
 //       // Revoke the URL before removing the file
 //       if (fileToRemove?.previewUrl) {
 //         URL.revokeObjectURL(fileToRemove.previewUrl);
 //       }
-      
+
 //       return prev.filter((f) => f.id !== id);
 //     });
 //   };
 
 //   const openPreviewModal = (fileInfo: FileInfo) => {
-//     // Make a deep copy of the file info to ensure it doesn't reference 
+//     // Make a deep copy of the file info to ensure it doesn't reference
 //     // the same object that might be modified later
 //     setSelectedPreview({...fileInfo});
 //   };
@@ -583,7 +639,7 @@ export default App;
 //         >
 //           <ModeToggle />
 //         </motion.div>
-        
+
 //         <motion.h1
 //           initial={{ opacity: 0, y: -20 }}
 //           animate={{ opacity: 1, y: 0 }}
@@ -592,12 +648,12 @@ export default App;
 //         >
 //           File Uploader
 //         </motion.h1>
-        
+
 //         <form
 //           onSubmit={handleSubmit}
 //           className="grid w-full max-w-md items-center gap-3"
 //         >
-//           <motion.div 
+//           <motion.div
 //             initial={{ opacity: 0, y: 20 }}
 //             animate={{ opacity: 1, y: 0 }}
 //             transition={{ duration: 0.6, delay: 0.2, ease: [0.23, 1, 0.32, 1] }}
@@ -608,7 +664,7 @@ export default App;
 //               initial="idle"
 //               animate={isDragging ? "dragging" : "idle"}
 //               transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-//               className={`relative border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer min-h-40 
+//               className={`relative border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer min-h-40
 //                 ${
 //                   isDragging
 //                     ? "border-primary bg-primary/5"
@@ -637,8 +693,8 @@ export default App;
 //               >
 //                 <Upload size={20} className="text-muted-foreground mb-2" />
 //               </motion.div>
-              
-//               <motion.p 
+
+//               <motion.p
 //                 initial={{ y: 10, opacity: 0 }}
 //                 animate={{ y: 0, opacity: 1 }}
 //                 transition={{ delay: 0.4, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
@@ -646,8 +702,8 @@ export default App;
 //               >
 //                 Drag & Drop files here
 //               </motion.p>
-              
-//               <motion.p 
+
+//               <motion.p
 //                 initial={{ y: 10, opacity: 0 }}
 //                 animate={{ y: 0, opacity: 1 }}
 //                 transition={{ delay: 0.45, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
@@ -655,8 +711,8 @@ export default App;
 //               >
 //                 or click to browse
 //               </motion.p>
-              
-//               <motion.p 
+
+//               <motion.p
 //                 initial={{ y: 10, opacity: 0 }}
 //                 animate={{ y: 0, opacity: 1 }}
 //                 transition={{ delay: 0.5, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
@@ -728,7 +784,7 @@ export default App;
 //               >
 //                 Selected Files ({files.length})
 //               </motion.h2>
-              
+
 //               <div className="space-y-3">
 //                 <AnimatePresence>
 //                   {files.map((fileInfo, index) => (
@@ -740,7 +796,7 @@ export default App;
 //                       animate="visible"
 //                       exit="exit"
 //                       layout
-//                       className={`flex border border-accent/50 rounded-lg p-2 relative overflow-hidden 
+//                       className={`flex border border-accent/50 rounded-lg p-2 relative overflow-hidden
 //                         ${
 //                           fileInfo.type.startsWith("image/") ||
 //                           fileInfo.type.startsWith("video/")
@@ -766,7 +822,7 @@ export default App;
 //                         <X size={16} />
 //                       </motion.button>
 
-//                       <motion.div 
+//                       <motion.div
 //                         initial={{ opacity: 0 }}
 //                         animate={{ opacity: 1 }}
 //                         transition={{ duration: 0.5, delay: 0.2 + index * 0.05 }}
@@ -782,7 +838,7 @@ export default App;
 //                               alt={fileInfo.name}
 //                               className="max-w-full max-h-full object-contain rounded"
 //                             />
-//                             <motion.div 
+//                             <motion.div
 //                               initial={{ opacity: 0 }}
 //                               whileHover={{ opacity: 1 }}
 //                               transition={{ duration: 0.2 }}
@@ -800,7 +856,7 @@ export default App;
 //                               src={fileInfo.previewUrl}
 //                               className="max-w-full max-h-full object-contain rounded"
 //                             />
-//                             <motion.div 
+//                             <motion.div
 //                               initial={{ opacity: 0 }}
 //                               whileHover={{ opacity: 1 }}
 //                               transition={{ duration: 0.2 }}
@@ -810,7 +866,7 @@ export default App;
 //                             </motion.div>
 //                           </>
 //                         ) : (
-//                           <motion.div 
+//                           <motion.div
 //                             initial={{ scale: 0.8, opacity: 0 }}
 //                             animate={{ scale: 1, opacity: 1 }}
 //                             transition={{ duration: 0.4 }}
@@ -821,7 +877,7 @@ export default App;
 //                         )}
 //                       </motion.div>
 
-//                       <motion.div 
+//                       <motion.div
 //                         initial={{ x: 20, opacity: 0 }}
 //                         animate={{ x: 0, opacity: 1 }}
 //                         transition={{ duration: 0.4, delay: 0.3 + index * 0.05 }}
@@ -871,7 +927,7 @@ export default App;
 //                     {selectedPreview?.name}
 //                   </DialogTitle>
 
-//                   <motion.div 
+//                   <motion.div
 //                     initial={{ opacity: 0 }}
 //                     animate={{ opacity: 1 }}
 //                     transition={{ duration: 0.5, delay: 0.2 }}
@@ -899,7 +955,7 @@ export default App;
 //                     ) : null}
 //                   </motion.div>
 
-//                   <motion.div 
+//                   <motion.div
 //                     initial={{ opacity: 0, y: 10 }}
 //                     animate={{ opacity: 1, y: 0 }}
 //                     transition={{ duration: 0.3, delay: 0.3 }}
@@ -922,4 +978,3 @@ export default App;
 // }
 
 // export default App;
-
