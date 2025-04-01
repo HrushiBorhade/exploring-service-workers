@@ -47,15 +47,15 @@ function App() {
       setFileError("Please select at least one file");
       return;
     }
-
+  
     // Track upload progress or errors
     const uploadResults: {
       file: string;
-      presignedUrl?: string;
+      presignedUrl?: { url: string; key: string };
       status: string;
-      message?:string
+      message?: string;
     }[] = [];
-
+  
     try {
       // Process files in parallel
       await Promise.all(
@@ -66,7 +66,7 @@ function App() {
               filename: _file.name,
               filetype: _file.type,
             });
-
+  
             const response = await fetch(
               "http://localhost:8080/get-upload-url",
               {
@@ -77,33 +77,47 @@ function App() {
                 body: requestBody,
               }
             );
-
+  
             if (!response.ok) {
               throw new Error(
                 `Upload failed for ${_file.name}: ${response.statusText}`
               );
             }
-
+  
             const presignedUrl = await response.json();
-
+            
             uploadResults.push({
               file: _file.name,
               presignedUrl,
               status: "success",
             });
-          } catch (error:unknown) {
+  
+            // Step 2: Upload to S3 using the presigned URL
+            const uploadResponse = await fetch(presignedUrl.url, {
+              method: "PUT",
+              body: _file.file,  // Use the actual File object
+              headers: {
+                'Content-Type': _file.type
+              }
+            });
+            
+            if (!uploadResponse.ok) {
+              throw new Error(`S3 upload failed for ${_file.name}: ${uploadResponse.statusText}`);
+            }
+            
+          } catch (error) {
             console.error(`Error uploading ${_file.name}:`, error);
             uploadResults.push({
               file: _file.name,
               status: "error",
-              message: "Failed to get presigned url",
+              message: error instanceof Error ? error.message : "Failed to upload file",
             });
           }
         })
       );
-
+  
       console.log("Upload results:", uploadResults);
-
+  
       // Here you could add state management for showing upload results to the user
     } catch (error) {
       console.error("Upload process failed:", error);
